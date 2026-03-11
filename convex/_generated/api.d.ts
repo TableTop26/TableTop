@@ -8,13 +8,31 @@
  * @module
  */
 
+import type * as cart from "../cart.js";
+import type * as menu from "../menu.js";
+import type * as orders from "../orders.js";
+import type * as payments from "../payments.js";
+import type * as restaurants from "../restaurants.js";
+import type * as sessions from "../sessions.js";
+import type * as staff from "../staff.js";
+import type * as tables from "../tables.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  cart: typeof cart;
+  menu: typeof menu;
+  orders: typeof orders;
+  payments: typeof payments;
+  restaurants: typeof restaurants;
+  sessions: typeof sessions;
+  staff: typeof staff;
+  tables: typeof tables;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
