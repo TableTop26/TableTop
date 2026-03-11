@@ -1,4 +1,12 @@
-import { auth0 } from "@/lib/auth0";
+import { NextResponse } from "next/server";
 
-export const GET = auth0.handleAuth();
-export const POST = auth0.handleAuth();
+// Auth0 v4: all /auth/* routes (login, logout, callback) are handled by
+// the Auth0 middleware in src/middleware.ts before they reach this handler.
+// This file is a No-op fallback.
+export function GET() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+
+export function POST() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
