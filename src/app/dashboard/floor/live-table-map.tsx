@@ -46,6 +46,7 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
 
   const updateTableStatus = useMutation(api.tables.updateTableStatus);
   const clearTable = useMutation(api.tables.clearTable);
+  const serveTableOrders = useMutation(api.orders.serveTableOrders);
 
   const [selectedTableId, setSelectedTableId] = useState<Id<"tables"> | null>(null);
 
@@ -70,6 +71,10 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
   const handleStatusChange = async (status: any) => {
     if (!selectedTableId) return;
     try {
+      // When delivering food, mark all READY kitchen tickets as SERVED
+      if (status === "DINING") {
+        await serveTableOrders({ tableId: selectedTableId });
+      }
       await updateTableStatus({ tableId: selectedTableId, status });
       toast.success(`Table marked as ${statusLabels[status]}`);
       if (status !== "DINING") {

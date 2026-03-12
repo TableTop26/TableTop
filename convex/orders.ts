@@ -124,6 +124,25 @@ export const getOrdersForSession = query({
   },
 });
 
+// Mark all READY orders for a table as SERVED (called when waiter delivers food)
+export const serveTableOrders = mutation({
+  args: { tableId: v.id("tables") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const readyOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_table", (q) => q.eq("tableId", args.tableId))
+      .filter((q) => q.eq(q.field("status"), "READY"))
+      .collect();
+
+    await Promise.all(
+      readyOrders.map((order) => ctx.db.patch(order._id, { status: "SERVED" }))
+    );
+  },
+});
+
 export const getOpenKitchenTickets = query({
   args: { restaurantId: v.id("restaurants") },
   handler: async (ctx, args) => {
