@@ -43,8 +43,30 @@ export async function proxy(request: NextRequest) {
     const session = await auth0.getSession(request);
 
     if (session?.user) {
-      // Temporary fallback: if claim is missing, assume owner so everything works.
-      const role = session.user["https://tabletop.app/role"] || "owner";
+      // Resolve role: prefer Auth0 custom claim, otherwise look up staff table by email.
+      let role: string = session.user["https://tabletop.app/role"] || "";
+
+      if (!role && session.user.email) {
+        try {
+          const staffRecord = await convex.query(api.staff.getStaffByEmail, {
+            email: session.user.email,
+          });
+          if (staffRecord) {
+            role = staffRecord.role;
+            // Auto-link Auth0 sub on first login so subsequent role lookups by userId work
+            if (!staffRecord.userId || staffRecord.userId !== session.user.sub) {
+              await convex.mutation(api.staff.linkStaffUserByEmail, {
+                email: session.user.email,
+                userId: session.user.sub,
+              });
+            }
+          }
+        } catch {
+          // Convex unavailable — fall through to owner default
+        }
+      }
+
+      if (!role) role = "owner";
 
       // --- Subscription gate (owner only) ---
       // If the owner's subscription has expired, send them to the payment page.
@@ -65,11 +87,11 @@ export async function proxy(request: NextRequest) {
 
       // --- Role-based route restrictions ---
       if (role === "chef" && pathname !== "/dashboard/kitchen") {
-        return NextResponse.redirect(new URL("/unauthorized", request.url));
+        return NextResponse.redirect(new URL("/dashboard/kitchen", request.url));
       }
 
       if (role === "waiter" && !pathname.startsWith("/dashboard/floor")) {
-        return NextResponse.redirect(new URL("/unauthorized", request.url));
+        return NextResponse.redirect(new URL("/dashboard/floor", request.url));
       }
     }
 

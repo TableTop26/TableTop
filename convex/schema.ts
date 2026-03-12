@@ -32,6 +32,7 @@ export default defineSchema({
   })
     .index("by_restaurant", ["restaurantId"])
     .index("by_user", ["userId"])
+    .index("by_email", ["email"])
     .index("by_restaurant_user", ["restaurantId", "userId"]),
 
   tables: defineTable({
