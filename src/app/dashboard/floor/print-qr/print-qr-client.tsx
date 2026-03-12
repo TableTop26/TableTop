@@ -1,10 +1,10 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft } from "lucide-react";
+import { Printer, ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export function PrintQrClient({ ownerId }: { ownerId: string }) {
@@ -14,8 +14,13 @@ export function PrintQrClient({ ownerId }: { ownerId: string }) {
     restaurant ? { restaurantId: restaurant._id } : "skip"
   );
 
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const [baseUrl, setBaseUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setBaseUrl(window.location.origin);
+    }
+  }, []);
 
   if (restaurant === undefined || tables === undefined) {
     return (
@@ -81,13 +86,19 @@ export function PrintQrClient({ ownerId }: { ownerId: string }) {
                   </span>
                 )}
 
-                <QRCodeSVG
-                  value={url}
-                  size={160}
-                  level="M"
-                  includeMargin
-                  className="rounded-lg"
-                />
+                <div className="relative aspect-square w-full max-w-[160px] flex items-center justify-center bg-gray-50 rounded-lg">
+                  {baseUrl ? (
+                    <QRCodeSVG
+                      value={url.trim()}
+                      size={160}
+                      level="H"
+                      marginSize={4}
+                      className="rounded-lg w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full animate-pulse bg-gray-100 rounded-lg" />
+                  )}
+                </div>
 
                 <div className="text-center">
                   <p className="text-xl font-black tracking-tight">
@@ -97,6 +108,21 @@ export function PrintQrClient({ ownerId }: { ownerId: string }) {
                     <p className="text-xs text-muted-foreground">{table.zone}</p>
                   )}
                 </div>
+
+                <Link
+                  href={url}
+                  target="_blank"
+                  className="print:hidden w-full mt-1"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-8 gap-1.5 text-[11px] font-medium"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Visit Link
+                  </Button>
+                </Link>
 
                 <p className="text-center text-[10px] text-muted-foreground print:visible break-all px-1">
                   Scan to order
