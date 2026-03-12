@@ -11,6 +11,26 @@ import {
 } from "lucide-react";
 
 import { auth0 } from "@/lib/auth0";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../convex/_generated/api";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+async function resolveRole(userId: string, email: string | undefined): Promise<string> {
+  // Prefer Auth0 custom claim (set if an Auth0 Action is configured)
+  // Otherwise query Convex staff table
+  try {
+    const staffRecord = await convex.query(api.staff.getStaffMemberByUserId, { userId });
+    if (staffRecord) return staffRecord.role;
+    if (email) {
+      const byEmail = await convex.query(api.staff.getStaffByEmail, { email });
+      if (byEmail) return byEmail.role;
+    }
+  } catch {
+    // Convex unavailable
+  }
+  return "owner";
+}
 
 const allLinks = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard, roles: ["owner", "manager"] },
@@ -24,7 +44,10 @@ const allLinks = [
 
 export async function Sidebar() {
   const session = await auth0.getSession();
-  const role = (session?.user?.["https://tabletop.app/role"] || "owner") as string;
+  const userId = session?.user?.sub ?? "";
+  const email = session?.user?.email;
+  const claimRole = session?.user?.["https://tabletop.app/role"] as string | undefined;
+  const role = claimRole || (userId ? await resolveRole(userId, email) : "owner");
   const userName = session?.user?.name || "Admin User";
   
   // Filter links based on the role

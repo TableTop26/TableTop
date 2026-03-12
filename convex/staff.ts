@@ -124,6 +124,25 @@ export const getStaffByEmail = query({
   },
 });
 
+export const getStaffMemberByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.userId) return null;
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!member) return null;
+    return {
+      _id: member._id,
+      userId: member.userId,
+      role: member.role,
+      restaurantId: member.restaurantId,
+      name: member.name,
+    };
+  },
+});
+
 // Link a staff member's Auth0 sub by email — no auth required (called from middleware during first login)
 export const linkStaffUserByEmail = mutation({
   args: {

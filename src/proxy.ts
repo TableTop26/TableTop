@@ -43,18 +43,27 @@ export async function proxy(request: NextRequest) {
     const session = await auth0.getSession(request);
 
     if (session?.user) {
-      // Resolve role: prefer Auth0 custom claim, otherwise look up staff table by email.
+      // Resolve role: prefer Auth0 custom claim, otherwise look up staff table.
+      // Try by userId (sub) first — most reliable once linked. Fall back to email
+      // for first login before the userId is written into the staff record.
       let role: string = session.user["https://tabletop.app/role"] || "";
 
-      if (!role && session.user.email) {
+      if (!role) {
         try {
-          const staffRecord = await convex.query(api.staff.getStaffByEmail, {
-            email: session.user.email,
+          // Primary: look up by Auth0 sub (works after first login)
+          let staffRecord = await convex.query(api.staff.getStaffMemberByUserId, {
+            userId: session.user.sub,
           });
+          // Secondary: look up by email (very first login, userId not yet linked)
+          if (!staffRecord && session.user.email) {
+            staffRecord = await convex.query(api.staff.getStaffByEmail, {
+              email: session.user.email,
+            });
+          }
           if (staffRecord) {
             role = staffRecord.role;
-            // Auto-link Auth0 sub on first login so subsequent role lookups by userId work
-            if (!staffRecord.userId || staffRecord.userId !== session.user.sub) {
+            // Auto-link Auth0 sub on first login so userId lookup works next time
+            if (staffRecord.userId !== session.user.sub && session.user.email) {
               await convex.mutation(api.staff.linkStaffUserByEmail, {
                 email: session.user.email,
                 userId: session.user.sub,

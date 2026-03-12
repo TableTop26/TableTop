@@ -4,8 +4,12 @@ import { FloorPlanManager } from "./floor-plan-manager";
 import { LiveTableMap } from "./live-table-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutGrid, Edit3, Printer } from "lucide-react";
-import { MenuAvailabilityDrawer } from "@/components/dashboard/MenuAvailabilityDrawer";
+import { MenuAvailabilityDrawerWrapper } from "./menu-availability-drawer-wrapper";
 import Link from "next/link";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export default async function FloorPlanPage() {
   const session = await auth0.getSession();
@@ -14,7 +18,31 @@ export default async function FloorPlanPage() {
     redirect("/auth/login");
   }
 
-  const ownerId = session.user.sub;
+  const userId = session.user.sub;
+  const claimRole = session.user["https://tabletop.app/role"] as string | undefined;
+  let role = claimRole || "owner";
+  if (!claimRole) {
+    try {
+      const staff = await convex.query(api.staff.getStaffMemberByUserId, { userId });
+      if (staff) role = staff.role;
+    } catch {}
+  }
+
+  // Waiters see only the live map — full screen, no chrome
+  if (role === "waiter") {
+    // Need the restaurant owner's ID (not the waiter's sub) for LiveTableMap
+    let ownerIdForMap = userId;
+    try {
+      const staff = await convex.query(api.staff.getStaffMemberByUserId, { userId });
+      if (staff) {
+        const restaurant = await convex.query(api.restaurants.getRestaurantById, {
+          restaurantId: staff.restaurantId,
+        });
+        if (restaurant) ownerIdForMap = restaurant.ownerId;
+      }
+    } catch {}
+    return <LiveTableMap ownerId={ownerIdForMap} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -31,7 +59,7 @@ export default async function FloorPlanPage() {
             <Printer className="h-4 w-4" />
             Print QRs
           </Link>
-          <MenuAvailabilityDrawer ownerId={ownerId} />
+          <MenuAvailabilityDrawerWrapper ownerId={userId} />
         </div>
       </div>
 
@@ -47,10 +75,10 @@ export default async function FloorPlanPage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="live" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-          <LiveTableMap ownerId={ownerId} />
+          <LiveTableMap ownerId={userId} />
         </TabsContent>
         <TabsContent value="builder" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-          <FloorPlanManager ownerId={ownerId} />
+          <FloorPlanManager ownerId={userId} />
         </TabsContent>
       </Tabs>
     </div>
