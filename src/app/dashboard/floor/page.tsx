@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { FloorPlanManager } from "./floor-plan-manager";
 import { LiveTableMap } from "./live-table-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, Edit3, Printer } from "lucide-react";
+import { LayoutGrid, Edit3, Printer, LogOut } from "lucide-react";
 import { MenuAvailabilityDrawerWrapper } from "./menu-availability-drawer-wrapper";
 import Link from "next/link";
 import { ConvexHttpClient } from "convex/browser";
@@ -28,9 +28,9 @@ export default async function FloorPlanPage() {
     } catch {}
   }
 
-  // Waiters see only the live map — full screen, no chrome
+  // Waiters see only the live map with a minimal header
   if (role === "waiter") {
-    // Need the restaurant owner's ID (not the waiter's sub) for LiveTableMap
+    const userName = session.user.name || session.user.email || "Waiter";
     let ownerIdForMap = userId;
     try {
       const staff = await convex.query(api.staff.getStaffMemberByUserId, { userId });
@@ -41,7 +41,23 @@ export default async function FloorPlanPage() {
         if (restaurant) ownerIdForMap = restaurant.ownerId;
       }
     } catch {}
-    return <LiveTableMap ownerId={ownerIdForMap} />;
+    return (
+      <div className="flex flex-col h-screen overflow-hidden bg-background">
+        <header className="flex items-center justify-between border-b bg-card px-4 py-2 shrink-0">
+          <span className="text-sm font-medium text-foreground">{userName}</span>
+          <Link
+            href="/auth/logout"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </Link>
+        </header>
+        <div className="flex-1 overflow-hidden">
+          <LiveTableMap ownerId={ownerIdForMap} />
+        </div>
+      </div>
+    );
   }
 
   return (
