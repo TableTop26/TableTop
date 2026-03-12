@@ -56,7 +56,8 @@ export const updateOrderStatus = mutation({
       v.literal("ACCEPTED"),
       v.literal("COOKING"),
       v.literal("READY"),
-      v.literal("SERVED")
+      v.literal("SERVED"),
+      v.literal("CANCELLED")
     ),
   },
   handler: async (ctx, args) => {
@@ -85,6 +86,11 @@ export const updateOrderStatus = mutation({
     // When chef marks READY → table becomes READY_TO_SERVE (blue on waiter map)
     if (args.status === "READY") {
       await ctx.db.patch(order.tableId, { status: "READY_TO_SERVE" });
+    }
+
+    // When chef cancels → table goes back to ORDERING so guests can reorder
+    if (args.status === "CANCELLED") {
+      await ctx.db.patch(order.tableId, { status: "ORDERING" });
     }
 
     // When waiter marks SERVED → table becomes DINING (green)

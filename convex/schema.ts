@@ -111,7 +111,8 @@ export default defineSchema({
       v.literal("ACCEPTED"),
       v.literal("COOKING"),
       v.literal("READY"),
-      v.literal("SERVED")
+      v.literal("SERVED"),
+      v.literal("CANCELLED")
     ),
     placedAt: v.number(), // Unix ms
   })
