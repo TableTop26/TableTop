@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { FloorPlanManager } from "./floor-plan-manager";
 import { LiveTableMap } from "./live-table-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, Edit3 } from "lucide-react";
+import { LayoutGrid, Edit3, Printer } from "lucide-react";
 import { MenuAvailabilityDrawer } from "@/components/dashboard/MenuAvailabilityDrawer";
+import Link from "next/link";
 
 export default async function FloorPlanPage() {
   const session = await auth0.getSession();
@@ -22,7 +23,16 @@ export default async function FloorPlanPage() {
           <h2 className="text-2xl font-bold tracking-tight">Floor Management</h2>
           <p className="text-muted-foreground">Monitor table statuses in real-time or edit the floor layout.</p>
         </div>
-        <MenuAvailabilityDrawer ownerId={ownerId} />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/floor/print-qr"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 h-8 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <Printer className="h-4 w-4" />
+            Print QRs
+          </Link>
+          <MenuAvailabilityDrawer ownerId={ownerId} />
+        </div>
       </div>
 
       <Tabs defaultValue="live" className="w-full">
