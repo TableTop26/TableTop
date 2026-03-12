@@ -6,7 +6,7 @@ import { Id } from "../convex/_generated/dataModel";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Guest Session Validation for /table/ routes
@@ -77,18 +77,24 @@ export async function proxy(request: NextRequest) {
 
       if (!role) role = "owner";
 
-      // --- Subscription gate (owner only) ---
-      // If the owner's subscription has expired, send them to the payment page.
-      // Skip the gate when they're already navigating to /dashboard/onboarding to avoid loops.
-      const isPayPage = pathname.startsWith("/dashboard/onboarding");
-      if (role === "owner" && !isPayPage) {
+      // --- Onboarding & Subscription gate (owner only) ---
+      // 1. If no restaurant exists, redirect to onboarding form.
+      // 2. If restaurant exists but subscription is trial/expired, redirect to pay page.
+      const isOnboardingPage = pathname.startsWith("/dashboard/onboarding");
+      if (role === "owner" && !isOnboardingPage) {
         try {
           const restaurant = await convex.query(api.restaurants.getRestaurantByOwner, {
             ownerId: session.user.sub,
           });
-          if (restaurant && restaurant.subscriptionStatus === "expired") {
-            return NextResponse.redirect(new URL("/dashboard/onboarding/pay", request.url));
+          
+          if (!restaurant) {
+            return NextResponse.redirect(new URL("/dashboard/onboarding", request.url));
           }
+          
+          // TODO: Uncomment this after Razorpay integration is complete
+          // if (restaurant.subscriptionStatus !== "active") {
+          //   return NextResponse.redirect(new URL("/dashboard/onboarding/pay", request.url));
+          // }
         } catch {
           // Convex unavailable — allow through rather than hard-locking
         }
