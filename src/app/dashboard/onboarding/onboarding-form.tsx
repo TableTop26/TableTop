@@ -47,8 +47,8 @@ export function OnboardingForm({ ownerId }: { ownerId: string }) {
           ...(formData.upiQrUrl ? { upiQrUrl: formData.upiQrUrl } : {}),
         });
       }
-      toast.success("Welcome aboard! Restaurant profile created.");
-      router.push("/dashboard/menu");
+      toast.success("Welcome aboard! Let's activate your subscription.");
+      router.push("/dashboard/onboarding/pay");
     } catch (error) {
       toast.error("Failed to create profile. Please try again.");
     } finally {

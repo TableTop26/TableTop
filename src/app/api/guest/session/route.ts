@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
   // HTTP-only cookie — used by proxy to verify session validity
   response.cookies.set("tabletop_guest_token", cookieValue, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 4, // 4 hours
     path: "/",
     sameSite: "lax",

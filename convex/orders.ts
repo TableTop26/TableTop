@@ -60,8 +60,25 @@ export const updateOrderStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
+    // Verify caller is owner or staff of this restaurant
+    const restaurant = await ctx.db.get(order.restaurantId);
+    if (!restaurant) throw new Error("Restaurant not found");
+    const isOwner = restaurant.ownerId === identity.subject;
+    if (!isOwner) {
+      const staffMember = await ctx.db
+        .query("staff")
+        .withIndex("by_restaurant_user", (q) =>
+          q
+            .eq("restaurantId", order.restaurantId)
+            .eq("userId", identity.subject)
+        )
+        .first();
+      if (!staffMember) throw new Error("Not authorized");
+    }
 
     await ctx.db.patch(args.orderId, { status: args.status });
 

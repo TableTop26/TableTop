@@ -13,6 +13,11 @@ export const inviteStaff = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const restaurant = await ctx.db.get(args.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     // userId will be linked when the staff member logs in via Auth0
     return ctx.db.insert("staff", {
       restaurantId: args.restaurantId,
@@ -31,6 +36,17 @@ export const toggleStaffDuty = mutation({
     isOnDuty: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    // Allow the staff member themselves OR owner to toggle duty status
+    const staffMember = await ctx.db.get(args.staffId);
+    if (!staffMember) throw new Error("Staff member not found");
+    const isSelf = staffMember.userId === identity.subject;
+    if (!isSelf) {
+      const restaurant = await ctx.db.get(staffMember.restaurantId);
+      if (!restaurant || restaurant.ownerId !== identity.subject)
+        throw new Error("Not authorized");
+    }
     await ctx.db.patch(args.staffId, { isOnDuty: args.isOnDuty });
   },
 });
@@ -93,6 +109,13 @@ export const getRoleByUserId = query({
 export const removeStaff = mutation({
   args: { staffId: v.id("staff") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const staffMember = await ctx.db.get(args.staffId);
+    if (!staffMember) throw new Error("Staff member not found");
+    const restaurant = await ctx.db.get(staffMember.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     await ctx.db.delete(args.staffId);
   },
 });
