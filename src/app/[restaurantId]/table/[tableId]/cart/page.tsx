@@ -30,6 +30,7 @@ export default function CartPage() {
   const [guestName, setGuestName] = useState("Guest");
   const [cartOpen, setCartOpen] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [modifierInputs, setModifierInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const stored = sessionStorage.getItem("tabletop_guest_name");
@@ -73,11 +74,12 @@ export default function CartPage() {
 
   async function handleAdd(menuItemId: Id<"menuItems">) {
     if (!session?._id) return;
+    const note = modifierInputs[menuItemId]?.trim() ?? "";
     await addItem({
       sessionId: session._id,
       menuItemId,
       quantity: 1,
-      modifiers: [],
+      modifiers: note ? [note] : [],
       addedByGuestName: guestName,
     });
   }
@@ -228,6 +230,20 @@ export default function CartPage() {
                           <p className="mt-1 text-sm font-semibold text-zinc-700">
                             {formatPrice(item.price)}
                           </p>
+                          {item.isAvailable && (
+                            <input
+                              type="text"
+                              placeholder="Special instructions (e.g. no onion)"
+                              value={modifierInputs[item._id] ?? ""}
+                              onChange={(e) =>
+                                setModifierInputs((prev) => ({
+                                  ...prev,
+                                  [item._id]: e.target.value,
+                                }))
+                              }
+                              className="mt-2 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                            />
+                          )}
                         </div>
                         <div className="flex-shrink-0">
                           {!item.isAvailable ? (

@@ -174,8 +174,25 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
                 )}
 
                 {selectedTable?.status === "PAYMENT_PENDING" && (
-                  <div className="p-4 border rounded-lg bg-orange-50 border-orange-200 text-orange-900 mb-4 text-sm">
-                    Guests have requested the bill. Assist with payment, then clear the table.
+                  <div className="space-y-3">
+                    <div className="p-4 border rounded-lg bg-orange-50 border-orange-200 text-orange-900 text-sm">
+                      Guests have requested the bill. Show them the QR or insert card, then clear the table.
+                    </div>
+                    {restaurant?.upiQrUrl ? (
+                      <div className="rounded-lg border bg-white p-4 flex flex-col items-center gap-2">
+                        <p className="text-xs font-medium text-muted-foreground">Show guests this QR to pay</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={restaurant.upiQrUrl}
+                          alt="UPI QR"
+                          className="h-48 w-48 rounded-lg object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No UPI QR uploaded. Add one in Settings.
+                      </p>
+                    )}
                   </div>
                 )}
 
