@@ -28,6 +28,7 @@ export default defineSchema({
     ),
     name: v.string(),
     email: v.string(),
+    isOnDuty: v.optional(v.boolean()),
   })
     .index("by_restaurant", ["restaurantId"])
     .index("by_user", ["userId"])

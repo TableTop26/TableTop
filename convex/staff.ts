@@ -20,7 +20,18 @@ export const inviteStaff = mutation({
       name: args.name,
       email: args.email,
       role: args.role,
+      isOnDuty: false,
     });
+  },
+});
+
+export const toggleStaffDuty = mutation({
+  args: {
+    staffId: v.id("staff"),
+    isOnDuty: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.staffId, { isOnDuty: args.isOnDuty });
   },
 });
 
@@ -65,6 +76,17 @@ export const getMyRole = query({
       )
       .first();
     return member?.role ?? null;
+  },
+});
+
+export const getRoleByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    return member?.role ?? "owner"; // Fallback to owner if not explicitly in staff table (e.g. the one who created restaurant)
   },
 });
 
