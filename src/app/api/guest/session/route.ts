@@ -42,9 +42,10 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ sessionId });
 
-  // HTTP-only cookie — used by middleware to verify session validity
+  // HTTP-only cookie — used by proxy to verify session validity
   response.cookies.set("tabletop_guest_token", cookieValue, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 4, // 4 hours
     path: "/",
     sameSite: "lax",

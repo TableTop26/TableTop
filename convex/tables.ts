@@ -9,6 +9,11 @@ export const createTable = mutation({
     capacity: v.number(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const restaurant = await ctx.db.get(args.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     return ctx.db.insert("tables", {
       restaurantId: args.restaurantId,
       label: args.label,
@@ -51,6 +56,22 @@ export const updateTableStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const table = await ctx.db.get(args.tableId);
+    if (!table) throw new Error("Table not found");
+    const restaurant = await ctx.db.get(table.restaurantId);
+    if (!restaurant) throw new Error("Restaurant not found");
+    const isOwner = restaurant.ownerId === identity.subject;
+    if (!isOwner) {
+      const staffMember = await ctx.db
+        .query("staff")
+        .withIndex("by_restaurant_user", (q) =>
+          q.eq("restaurantId", table.restaurantId).eq("userId", identity.subject)
+        )
+        .first();
+      if (!staffMember) throw new Error("Not authorized");
+    }
     await ctx.db.patch(args.tableId, { status: args.status });
   },
 });
@@ -71,8 +92,22 @@ export const assignSession = mutation({
 export const clearTable = mutation({
   args: { tableId: v.id("tables") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const table = await ctx.db.get(args.tableId);
     if (!table) throw new Error("Table not found");
+    const restaurant = await ctx.db.get(table.restaurantId);
+    if (!restaurant) throw new Error("Restaurant not found");
+    const isOwner = restaurant.ownerId === identity.subject;
+    if (!isOwner) {
+      const staffMember = await ctx.db
+        .query("staff")
+        .withIndex("by_restaurant_user", (q) =>
+          q.eq("restaurantId", table.restaurantId).eq("userId", identity.subject)
+        )
+        .first();
+      if (!staffMember) throw new Error("Not authorized");
+    }
 
     // Close the active session so guest cookies become invalid
     if (table.currentSessionId) {
@@ -94,6 +129,13 @@ export const updateTable = mutation({
     capacity: v.optional(v.number()),
   },
   handler: async (ctx, { tableId, ...patch }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const table = await ctx.db.get(tableId);
+    if (!table) throw new Error("Table not found");
+    const restaurant = await ctx.db.get(table.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     const updates = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined)
     );
@@ -104,6 +146,13 @@ export const updateTable = mutation({
 export const deleteTable = mutation({
   args: { tableId: v.id("tables") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const table = await ctx.db.get(args.tableId);
+    if (!table) throw new Error("Table not found");
+    const restaurant = await ctx.db.get(table.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     await ctx.db.delete(args.tableId);
   },
 });

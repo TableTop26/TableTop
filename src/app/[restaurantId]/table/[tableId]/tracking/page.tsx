@@ -4,12 +4,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { CheckCircle2, ChefHat, Clock, Truck, UtensilsCrossed } from "lucide-react";
+import { CheckCircle2, ChefHat, Clock, Truck, UtensilsCrossed, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SessionGuard } from "../_components/SessionGuard";
 
-type OrderStatus = "PLACED" | "ACCEPTED" | "COOKING" | "READY" | "SERVED";
+type OrderStatus = "PLACED" | "ACCEPTED" | "COOKING" | "READY" | "SERVED" | "CANCELLED";
 
 const STATUS_STEPS: { key: OrderStatus; label: string; Icon: React.ElementType }[] = [
   { key: "PLACED", label: "Order placed", Icon: Clock },
@@ -25,6 +25,7 @@ const STATUS_INDEX: Record<OrderStatus, number> = {
   COOKING: 2,
   READY: 3,
   SERVED: 4,
+  CANCELLED: -1,
 };
 
 function formatPrice(paise: number) {
@@ -32,16 +33,24 @@ function formatPrice(paise: number) {
 }
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const colors: Record<OrderStatus, string> = {
+  if (status === "CANCELLED") {
+    return (
+      <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-red-100 text-red-700">
+        Rejected by kitchen
+      </span>
+    );
+  }
+  const colors: Record<Exclude<OrderStatus, "CANCELLED">, string> = {
     PLACED: "bg-yellow-100 text-yellow-700",
     ACCEPTED: "bg-blue-100 text-blue-700",
     COOKING: "bg-orange-100 text-orange-700",
     READY: "bg-green-100 text-green-700",
     SERVED: "bg-zinc-100 text-zinc-600",
   };
+  const idx = STATUS_INDEX[status];
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[status]}`}>
-      {STATUS_STEPS[STATUS_INDEX[status]].label}
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[status as Exclude<OrderStatus, "CANCELLED">]}`}>
+      {STATUS_STEPS[idx].label}
     </span>
   );
 }
@@ -61,7 +70,9 @@ export default function TrackingPage() {
   );
 
   const allServed =
-    orders && orders.length > 0 && orders.every((o) => o.status === "SERVED");
+    orders &&
+    orders.length > 0 &&
+    orders.every((o) => o.status === "SERVED" || o.status === "CANCELLED");
 
   return (
     <SessionGuard tableId={tableId} restaurantId={restaurantId}>
@@ -102,6 +113,12 @@ export default function TrackingPage() {
                 </div>
 
                 {/* Status pipeline */}
+                {order.status === "CANCELLED" ? (
+                  <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2">
+                    <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-xs text-red-600">This order was rejected by the kitchen. Please add items again or ask your waiter.</span>
+                  </div>
+                ) : (
                 <div className="mb-4 flex items-center gap-1">
                   {STATUS_STEPS.map((step, i) => {
                     const current = STATUS_INDEX[order.status as OrderStatus];
@@ -117,6 +134,7 @@ export default function TrackingPage() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Order items */}
                 <ul className="space-y-1.5">

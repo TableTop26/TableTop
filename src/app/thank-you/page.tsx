@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function ThankYouPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-8 text-center">
@@ -9,15 +7,9 @@ export default function ThankYouPage() {
       <h1 className="mb-2 text-2xl font-bold tracking-tight text-zinc-900">
         Thanks for dining with us!
       </h1>
-      <p className="mb-8 text-zinc-500">
+      <p className="text-zinc-500">
         Your session has ended. We hope to see you again soon.
       </p>
-      <Link
-        href="/"
-        className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-      >
-        Back to home
-      </Link>
     </main>
   );
 }

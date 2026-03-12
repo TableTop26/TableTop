@@ -43,7 +43,9 @@ export const placeOrder = mutation({
     // Clear the cart
     await Promise.all(cartItems.map((item) => ctx.db.delete(item._id)));
 
-    // Table stays ORDERING until chef accepts; will move to DINING on SERVED
+    // Ensure table is ORDERING so waiter map reflects an active order pending kitchen pickup
+    await ctx.db.patch(session.tableId, { status: "ORDERING" });
+
     return orderId;
   },
 });
@@ -56,18 +58,41 @@ export const updateOrderStatus = mutation({
       v.literal("ACCEPTED"),
       v.literal("COOKING"),
       v.literal("READY"),
-      v.literal("SERVED")
+      v.literal("SERVED"),
+      v.literal("CANCELLED")
     ),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
+    // Verify caller is owner or staff of this restaurant
+    const restaurant = await ctx.db.get(order.restaurantId);
+    if (!restaurant) throw new Error("Restaurant not found");
+    const isOwner = restaurant.ownerId === identity.subject;
+    if (!isOwner) {
+      const staffMember = await ctx.db
+        .query("staff")
+        .withIndex("by_restaurant_user", (q) =>
+          q
+            .eq("restaurantId", order.restaurantId)
+            .eq("userId", identity.subject)
+        )
+        .first();
+      if (!staffMember) throw new Error("Not authorized");
+    }
 
     await ctx.db.patch(args.orderId, { status: args.status });
 
     // When chef marks READY → table becomes READY_TO_SERVE (blue on waiter map)
     if (args.status === "READY") {
       await ctx.db.patch(order.tableId, { status: "READY_TO_SERVE" });
+    }
+
+    // When chef cancels → table goes back to ORDERING so guests can reorder
+    if (args.status === "CANCELLED") {
+      await ctx.db.patch(order.tableId, { status: "ORDERING" });
     }
 
     // When waiter marks SERVED → table becomes DINING (green)
@@ -96,6 +121,25 @@ export const getOrdersForSession = query({
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .order("desc")
       .collect();
+  },
+});
+
+// Mark all READY orders for a table as SERVED (called when waiter delivers food)
+export const serveTableOrders = mutation({
+  args: { tableId: v.id("tables") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const readyOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_table", (q) => q.eq("tableId", args.tableId))
+      .filter((q) => q.eq(q.field("status"), "READY"))
+      .collect();
+
+    await Promise.all(
+      readyOrders.map((order) => ctx.db.patch(order._id, { status: "SERVED" }))
+    );
   },
 });
 

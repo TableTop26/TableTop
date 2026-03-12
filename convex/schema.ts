@@ -28,9 +28,11 @@ export default defineSchema({
     ),
     name: v.string(),
     email: v.string(),
+    isOnDuty: v.optional(v.boolean()),
   })
     .index("by_restaurant", ["restaurantId"])
     .index("by_user", ["userId"])
+    .index("by_email", ["email"])
     .index("by_restaurant_user", ["restaurantId", "userId"]),
 
   tables: defineTable({
@@ -109,7 +111,8 @@ export default defineSchema({
       v.literal("ACCEPTED"),
       v.literal("COOKING"),
       v.literal("READY"),
-      v.literal("SERVED")
+      v.literal("SERVED"),
+      v.literal("CANCELLED")
     ),
     placedAt: v.number(), // Unix ms
   })

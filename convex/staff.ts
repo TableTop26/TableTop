@@ -13,6 +13,11 @@ export const inviteStaff = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const restaurant = await ctx.db.get(args.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     // userId will be linked when the staff member logs in via Auth0
     return ctx.db.insert("staff", {
       restaurantId: args.restaurantId,
@@ -20,7 +25,29 @@ export const inviteStaff = mutation({
       name: args.name,
       email: args.email,
       role: args.role,
+      isOnDuty: false,
     });
+  },
+});
+
+export const toggleStaffDuty = mutation({
+  args: {
+    staffId: v.id("staff"),
+    isOnDuty: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    // Allow the staff member themselves OR owner to toggle duty status
+    const staffMember = await ctx.db.get(args.staffId);
+    if (!staffMember) throw new Error("Staff member not found");
+    const isSelf = staffMember.userId === identity.subject;
+    if (!isSelf) {
+      const restaurant = await ctx.db.get(staffMember.restaurantId);
+      if (!restaurant || restaurant.ownerId !== identity.subject)
+        throw new Error("Not authorized");
+    }
+    await ctx.db.patch(args.staffId, { isOnDuty: args.isOnDuty });
   },
 });
 
@@ -68,9 +95,82 @@ export const getMyRole = query({
   },
 });
 
+export const getRoleByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    return member?.role ?? "owner"; // Fallback to owner if not explicitly in staff table (e.g. the one who created restaurant)
+  },
+});
+
+export const getStaffByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!member) return null;
+    return {
+      _id: member._id,
+      userId: member.userId,
+      role: member.role,
+      restaurantId: member.restaurantId,
+      name: member.name,
+    };
+  },
+});
+
+export const getStaffMemberByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.userId) return null;
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!member) return null;
+    return {
+      _id: member._id,
+      userId: member.userId,
+      role: member.role,
+      restaurantId: member.restaurantId,
+      name: member.name,
+    };
+  },
+});
+
+// Link a staff member's Auth0 sub by email — no auth required (called from middleware during first login)
+export const linkStaffUserByEmail = mutation({
+  args: {
+    email: v.string(),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("staff")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!member) return null;
+    if (member.userId === args.userId) return member._id; // already linked
+    await ctx.db.patch(member._id, { userId: args.userId });
+    return member._id;
+  },
+});
+
 export const removeStaff = mutation({
   args: { staffId: v.id("staff") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const staffMember = await ctx.db.get(args.staffId);
+    if (!staffMember) throw new Error("Staff member not found");
+    const restaurant = await ctx.db.get(staffMember.restaurantId);
+    if (!restaurant || restaurant.ownerId !== identity.subject)
+      throw new Error("Not authorized");
     await ctx.db.delete(args.staffId);
   },
 });
