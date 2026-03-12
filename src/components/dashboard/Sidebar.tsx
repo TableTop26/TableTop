@@ -7,6 +7,7 @@ import {
   Settings,
   PieChart,
   ChefHat,
+  LogOut,
 } from "lucide-react";
 
 import { auth0 } from "@/lib/auth0";
@@ -52,7 +53,7 @@ export async function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-xs">
             {userName.charAt(0).toUpperCase()}
@@ -62,6 +63,13 @@ export async function Sidebar() {
             <span className="text-xs text-muted-foreground capitalize">{role}</span>
           </div>
         </div>
+        <Link
+          href="/auth/logout"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </Link>
       </div>
     </div>
   );
