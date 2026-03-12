@@ -55,14 +55,15 @@ export function KitchenClient({ ownerId }: { ownerId: string }) {
   }
 
   const queued = openOrders.filter((o) => o.status === "PLACED");
-  const inProgress = openOrders.filter((o) => o.status === "ACCEPTED" || o.status === "COOKING");
+  const cooking = openOrders.filter((o) => o.status === "COOKING" || o.status === "ACCEPTED");
   const ready = openOrders.filter((o) => o.status === "READY");
 
-  const handleStatusChange = async (orderId: Id<"orders">, newStatus: "ACCEPTED" | "READY" | "CANCELLED") => {
+  const handleStatusChange = async (orderId: Id<"orders">, newStatus: "COOKING" | "READY" | "CANCELLED") => {
     try {
       await updateStatus({ orderId, status: newStatus });
       if (newStatus === "CANCELLED") toast.error("Ticket rejected — table notified");
-      else toast.success(`Order marked as ${newStatus.toLowerCase()}`);
+      else if (newStatus === "COOKING") toast.success("Ticket accepted — cooking!");
+      else toast.success("Order ready for pickup!");
     } catch (_e) {
       toast.error("Failed to update order status");
     }
@@ -89,17 +90,17 @@ export function KitchenClient({ ownerId }: { ownerId: string }) {
 
       <div className="grid h-[calc(100vh-10rem)] grid-cols-3 gap-6">
         <Column
-          title="Queue"
+          title="New Orders"
           orders={queued}
-          actionLabel="Accept"
-          onAction={(id) => handleStatusChange(id, "ACCEPTED")}
+          actionLabel="Accept & Cook"
+          onAction={(id) => handleStatusChange(id, "COOKING")}
           onReject={(id) => handleStatusChange(id, "CANCELLED")}
           onOutOfStock={handleOutOfStock}
-          columnColor="bg-slate-50 dark:bg-slate-900 border-slate-200"
+          columnColor="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900"
         />
         <Column
-          title="In Progress"
-          orders={inProgress}
+          title="Cooking"
+          orders={cooking}
           actionLabel="Ready for Pickup"
           onAction={(id) => handleStatusChange(id, "READY")}
           onOutOfStock={handleOutOfStock}

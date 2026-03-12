@@ -43,7 +43,9 @@ export const placeOrder = mutation({
     // Clear the cart
     await Promise.all(cartItems.map((item) => ctx.db.delete(item._id)));
 
-    // Table stays ORDERING until chef accepts; will move to DINING on SERVED
+    // Ensure table is ORDERING so waiter map reflects an active order pending kitchen pickup
+    await ctx.db.patch(session.tableId, { status: "ORDERING" });
+
     return orderId;
   },
 });
