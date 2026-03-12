@@ -2,15 +2,18 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { UtensilsCrossed } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
-export function MenuAvailabilityDrawer({ restaurantId }: { restaurantId: Id<"restaurants"> }) {
-  const items = useQuery(api.menu.listMenuItems, { restaurantId });
+export function MenuAvailabilityDrawer({ ownerId }: { ownerId: string }) {
+  const restaurant = useQuery(api.restaurants.getRestaurantByOwner, { ownerId });
+  const items = useQuery(
+    api.menu.listMenuItems,
+    restaurant ? { restaurantId: restaurant._id } : "skip"
+  );
   const setAvailability = useMutation(api.menu.setItemAvailability);
 
   return (

@@ -5,10 +5,6 @@ import { LiveTableMap } from "./live-table-map";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutGrid, Edit3 } from "lucide-react";
 import { MenuAvailabilityDrawer } from "@/components/dashboard/MenuAvailabilityDrawer";
-import { Id } from "../../../../convex/_generated/dataModel";
-
-// TEMPORARY TILL RBAC is fully wired, this is the hardcoded ID we are using
-const DUMMY_RESTAURANT_ID = "jx71g8n9w54f5h9k3k20j04g997amfxf" as Id<"restaurants">;
 
 export default async function FloorPlanPage() {
   const session = await auth0.getSession();
@@ -26,7 +22,7 @@ export default async function FloorPlanPage() {
           <h2 className="text-2xl font-bold tracking-tight">Floor Management</h2>
           <p className="text-muted-foreground">Monitor table statuses in real-time or edit the floor layout.</p>
         </div>
-        <MenuAvailabilityDrawer restaurantId={DUMMY_RESTAURANT_ID} />
+        <MenuAvailabilityDrawer ownerId={ownerId} />
       </div>
 
       <Tabs defaultValue="live" className="w-full">
