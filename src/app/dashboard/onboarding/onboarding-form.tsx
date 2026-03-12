@@ -13,6 +13,7 @@ import { toast } from "sonner";
 export function OnboardingForm({ ownerId }: { ownerId: string }) {
   const router = useRouter();
   const createRestaurant = useMutation(api.restaurants.createRestaurant);
+  const updateRestaurant = useMutation(api.restaurants.updateRestaurant);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -33,14 +34,21 @@ export function OnboardingForm({ ownerId }: { ownerId: string }) {
     }
     try {
       setIsLoading(true);
-      await createRestaurant({
+      const restaurantId = await createRestaurant({
         name: formData.name,
         ownerId,
         taxRate: formData.taxRate,
       });
-      // Optionally update other details if added to createRestaurant args or via a subsequent update call
+      // Persist optional fields captured in steps 1 & 2
+      if (formData.logoUrl || formData.upiQrUrl) {
+        await updateRestaurant({
+          restaurantId,
+          ...(formData.logoUrl ? { logoUrl: formData.logoUrl } : {}),
+          ...(formData.upiQrUrl ? { upiQrUrl: formData.upiQrUrl } : {}),
+        });
+      }
       toast.success("Welcome aboard! Restaurant profile created.");
-      router.push("/dashboard/settings");
+      router.push("/dashboard/menu");
     } catch (error) {
       toast.error("Failed to create profile. Please try again.");
     } finally {

@@ -6,7 +6,7 @@ import { Id } from "../convex/_generated/dataModel";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export default async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Guest Session Validation for /table/ routes
@@ -53,7 +53,7 @@ export default async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
       
-      if (role === "waiter" && pathname !== "/dashboard/floor") {
+      if (role === "waiter" && !pathname.startsWith("/dashboard/floor")) {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
     }
