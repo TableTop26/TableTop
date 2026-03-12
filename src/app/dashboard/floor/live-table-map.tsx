@@ -43,6 +43,10 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
     api.tables.listTables,
     restaurant ? { restaurantId: restaurant._id } : "skip"
   );
+  const openOrders = useQuery(
+    api.orders.getOpenKitchenTickets,
+    restaurant ? { restaurantId: restaurant._id } : "skip"
+  );
 
   const updateTableStatus = useMutation(api.tables.updateTableStatus);
   const clearTable = useMutation(api.tables.clearTable);
@@ -56,6 +60,19 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
 
   if (restaurant === null) {
     return <div className="p-8">Please complete onboarding first.</div>;
+  }
+
+  // Build a map of tableId → kitchen status for quick lookup
+  const kitchenByTable: Record<string, "PLACED" | "COOKING" | "READY"> = {};
+  if (openOrders) {
+    for (const order of openOrders) {
+      const tableId = order.tableId as string;
+      const current = kitchenByTable[tableId];
+      // Priority: PLACED (not yet seen) > COOKING > READY
+      if (!current || order.status === "PLACED" || (order.status === "COOKING" && current === "READY")) {
+        kitchenByTable[tableId] = order.status as "PLACED" | "COOKING" | "READY";
+      }
+    }
   }
 
   const selectedTable = tables.find((t) => t._id === selectedTableId);
@@ -116,6 +133,7 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {zoneTables.map((table) => {
                   const colorClass = statusColors[table.status] || statusColors.AVAILABLE;
+                  const kitchenStatus = kitchenByTable[table._id as string];
                   return (
                     <button
                       key={table._id}
@@ -132,6 +150,16 @@ export function LiveTableMap({ ownerId }: { ownerId: string }) {
                       <Badge variant="secondary" className="absolute bottom-2 text-xs bg-white/50 hover:bg-white/60 text-black border-none">
                         {statusLabels[table.status]}
                       </Badge>
+                      {kitchenStatus === "PLACED" && (
+                        <span className="absolute top-2 right-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                          NEW
+                        </span>
+                      )}
+                      {kitchenStatus === "COOKING" && (
+                        <span className="absolute top-2 right-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                          COOKING
+                        </span>
+                      )}
                     </button>
                   );
                 })}
