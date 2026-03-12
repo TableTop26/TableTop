@@ -41,6 +41,24 @@ export const getRestaurantById = query({
   },
 });
 
+export const activateSubscription = mutation({
+  args: { ownerId: v.string() },
+  handler: async (ctx, { ownerId }) => {
+    const restaurant = await ctx.db
+      .query("restaurants")
+      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .first();
+    if (!restaurant) throw new Error("Restaurant not found for owner: " + ownerId);
+
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    await ctx.db.patch(restaurant._id, {
+      subscriptionStatus: "active",
+      subscriptionExpiresAt: Date.now() + thirtyDaysMs,
+    });
+    return restaurant._id;
+  },
+});
+
 export const updateRestaurant = mutation({
   args: {
     restaurantId: v.id("restaurants"),

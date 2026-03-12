@@ -37,22 +37,37 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 2. Admin RBAC for /dashboard routes
+  // 2. Admin RBAC + subscription gate for /dashboard routes
   if (pathname.startsWith("/dashboard")) {
-    // Auth0 proxy will ensure they are logged in.
-    // We check session here to enforce routes if they are logged in.
     const res = await auth0.middleware(request);
     const session = await auth0.getSession(request);
-    
+
     if (session?.user) {
-      // Temporary fallback: if claim is missing, assume owner (or manager) so everything works.
-      const role = session.user["https://tabletop.app/role"] || "owner"; 
-      
-      // Role-based Restrictions
+      // Temporary fallback: if claim is missing, assume owner so everything works.
+      const role = session.user["https://tabletop.app/role"] || "owner";
+
+      // --- Subscription gate (owner only) ---
+      // If the owner's subscription has expired, send them to the payment page.
+      // Skip the gate when they're already navigating to /dashboard/onboarding to avoid loops.
+      const isPayPage = pathname.startsWith("/dashboard/onboarding");
+      if (role === "owner" && !isPayPage) {
+        try {
+          const restaurant = await convex.query(api.restaurants.getRestaurantByOwner, {
+            ownerId: session.user.sub,
+          });
+          if (restaurant && restaurant.subscriptionStatus === "expired") {
+            return NextResponse.redirect(new URL("/dashboard/onboarding/pay", request.url));
+          }
+        } catch {
+          // Convex unavailable — allow through rather than hard-locking
+        }
+      }
+
+      // --- Role-based route restrictions ---
       if (role === "chef" && pathname !== "/dashboard/kitchen") {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
-      
+
       if (role === "waiter" && !pathname.startsWith("/dashboard/floor")) {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
