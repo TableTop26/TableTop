@@ -22,13 +22,13 @@ export default async function Home() {
 
       <div className="flex gap-3">
         <Link
-          href="/auth/login?screen_hint=signup"
+          href="/auth/login?screen_hint=signup&returnTo=/dashboard"
           className="inline-flex h-10 items-center rounded-lg border border-border bg-background px-5 text-sm font-medium transition-colors hover:bg-muted"
         >
           Sign up
         </Link>
         <Link
-          href="/auth/login"
+          href="/auth/login?returnTo=/dashboard"
           className="inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Log in
